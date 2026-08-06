@@ -17,7 +17,12 @@ if "%ERRORLEVEL%"=="0" (
 timeout /t 3 /nobreak >nul
 echo.
 
-:: 2. Launch Flask Application on port 5000
+:: 2. Launch Local Tunnel to public internet
+echo Exposing local server to public internet...
+start /B "" ssh -o StrictHostKeyChecking=no -R 80:localhost:5000 nokey@localhost.run
+timeout /t 2 /nobreak >nul
+
+:: 3. Launch Flask Application on port 5000
 echo [2/2] Launching Flask NLP Server on http://127.0.0.1:5000 ...
 cd /d "C:\xampp1\htdocs\Prescription\MediExtractAI"
 "..\.venv\Scripts\python.exe" app.py
