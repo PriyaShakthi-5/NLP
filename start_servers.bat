@@ -19,7 +19,7 @@ echo.
 
 :: 2. Launch Local Tunnel to public internet
 echo Exposing local server to public internet...
-start /B "" ssh -o StrictHostKeyChecking=no -R 80:localhost:5000 nokey@localhost.run
+start /B "" ssh -o StrictHostKeyChecking=no -R 80:127.0.0.1:5000 nokey@localhost.run
 timeout /t 2 /nobreak >nul
 
 :: 3. Launch Flask Application on port 5000
