@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MediExtractAI History</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <div class="logo-brand">
+            <span class="logo-mark">M</span>
+            MediExtractAI
+        </div>
+
+        <div class="top-nav">
+            <a class="nav-link" href="/">Upload</a>
+            <a class="nav-link" href="/dashboard">Dashboard</a>
+            <a class="nav-link" href="/history">History</a>
+        </div>
+
+        <div class="page-header">
+            <div>
+                <h1>Extraction History</h1>
+                <p class="page-description">Search your past prescription extractions and reopen any record for review or correction.</p>
+            </div>
+        </div>
+
+        <form class="form-box" method="get">
+            <label for="query">Search records</label>
+            <input type="search" name="query" value="{{ query }}" placeholder="Search by medicine, filename, or OCR text">
+            <button class="button-primary" type="submit">Search</button>
+        </form>
+
+        {% if records %}
+        <div class="record-grid">
+            {% for record in records %}
+            <div class="record-item">
+                <strong>{{ record.filename }}</strong>
+                <p>Medicine: {{ record.medicine or 'N/A' }}</p>
+                <p>Accuracy: <strong>{{ record.accuracy }}%</strong></p>
+                <div class="record-actions">
+                    <a href="/review/{{ record.id }}">Review</a>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div class="no-results">No records found yet. Upload a prescription to begin capturing extraction history.</div>
+        {% endif %}
+
+        <div class="page-links">
+            <a class="button-secondary" href="/">Back to Upload</a>
+            <a class="button-secondary" href="/dashboard">Open Dashboard</a>
+        </div>
+    </div>
+</body>
+</html>

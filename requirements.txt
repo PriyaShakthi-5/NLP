@@ -1,0 +1,7 @@
+Flask>=3.0.3
+Werkzeug>=3.0.2
+spacy>=3.8.2
+Pillow>=10.4.0
+easyocr>=1.7.2
+numpy>=2.0.2
+mysql-connector-python

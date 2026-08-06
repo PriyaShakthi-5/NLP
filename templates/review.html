@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MediExtractAI Review</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <div class="logo-brand">
+            <span class="logo-mark">M</span>
+            MediExtractAI
+        </div>
+
+        <div class="top-nav">
+            <a class="nav-link" href="/">Upload</a>
+            <a class="nav-link" href="/dashboard">Dashboard</a>
+            <a class="nav-link" href="/history">History</a>
+        </div>
+
+        <div class="page-header">
+            <div>
+                <h1>Review Prescription Data</h1>
+                <p class="page-description">Edit extracted fields, correct OCR errors, and save the final prescription record for accurate tracking.</p>
+            </div>
+        </div>
+
+        <div class="result-grid">
+            <div class="result-card">
+                <h2>OCR Text</h2>
+                <div class="text-card">
+                    <pre>{{ record.ocr_text }}</pre>
+                </div>
+            </div>
+
+            <div class="review-panel">
+                <h2>Edit Extracted Fields</h2>
+                <form method="post" class="form-box">
+                    <div class="form-group">
+                        <label for="medicine">Medicine</label>
+                        <input type="text" name="medicine" id="medicine" value="{{ record.medicine or '' }}" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="dosage">Dosage</label>
+                        <input type="text" name="dosage" id="dosage" value="{{ record.dosage or '' }}">
+                    </div>
+                    <div class="form-group">
+                        <label for="strength">Strength</label>
+                        <input type="text" name="strength" id="strength" value="{{ record.strength or '' }}">
+                    </div>
+                    <div class="form-group">
+                        <label for="frequency">Frequency</label>
+                        <input type="text" name="frequency" id="frequency" value="{{ record.frequency or '' }}">
+                    </div>
+                    <div class="form-group">
+                        <label for="duration">Duration</label>
+                        <input type="text" name="duration" id="duration" value="{{ record.duration or '' }}">
+                    </div>
+                    <button class="button-primary" type="submit">Save Review</button>
+                </form>
+            </div>
+        </div>
+
+        <div class="page-links">
+            <a class="button-secondary" href="/dashboard">Back to Dashboard</a>
+            <a class="button-secondary" href="/history">Back to History</a>
+        </div>
+    </div>
+</body>
+</html>

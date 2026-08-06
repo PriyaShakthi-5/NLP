@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MediExtractAI</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <div class="logo-brand">
+            <span class="logo-mark">M</span>
+            MediExtractAI
+        </div>
+
+        <div class="top-nav">
+            <a class="nav-link" href="/">Upload</a>
+            <a class="nav-link" href="/dashboard">Dashboard</a>
+            <a class="nav-link" href="/history">History</a>
+        </div>
+
+        <div class="page-header">
+            <div>
+                <h1>MediExtractAI</h1>
+                <p class="page-description">A polished local OCR + NLP prescription platform. Upload handwritten or printed prescriptions and review structured medical details instantly.</p>
+            </div>
+        </div>
+
+        <div class="hero">
+            <div>
+                <h1>Modern Prescription Extraction for Healthcare Teams</h1>
+                <p>Scan, parse, and review prescriptions in one smooth workflow. The same extraction logic stays intact while the interface becomes faster, cleaner, and more intuitive.</p>
+            </div>
+            <div class="hero-actions">
+                <a class="button-primary" href="#upload-form">Upload Prescription</a>
+                <a class="button-secondary" href="/dashboard">View Dashboard</a>
+            </div>
+        </div>
+
+        <div class="workflow">
+            <div class="workflow-step upload">Upload</div>
+            <div class="workflow-step process">OCR</div>
+            <div class="workflow-step process">Extract</div>
+            <div class="workflow-step review">Review</div>
+            <div class="workflow-step complete">Track</div>
+        </div>
+
+        <h2 class="section-title">Core Capabilities</h2>
+        <div class="modules">
+            <div class="module-card">Handwritten OCR support</div>
+            <div class="module-card">Local NLP extraction</div>
+            <div class="module-card">Medicine & dosage parsing</div>
+            <div class="module-card">Frequency + duration detection</div>
+            <div class="module-card">Review and correction flow</div>
+            <div class="module-card">Dashboard analytics</div>
+        </div>
+
+        <div class="form-box" id="upload-form">
+            <form action="/upload" method="post" enctype="multipart/form-data">
+                <label for="file">Upload prescription image</label>
+                <input type="file" name="file" required>
+                <button class="button-primary" type="submit">Upload & Analyze</button>
+            </form>
+        </div>
+
+        <div class="form-box" id="text-form" style="margin-top: 24px;">
+            <form action="/extract-text" method="post">
+                <label for="prescription_text">Or paste prescription text directly (Only NLP Operations)</label>
+                <textarea name="prescription_text" id="prescription_text" rows="6" placeholder="Type or paste prescription text here... e.g.&#10;Medicine: Paracetamol&#10;Dosage: 1 tablet&#10;Frequency: twice daily&#10;Duration: 5 days" required style="resize: vertical; min-height: 120px; font-family: inherit; font-size: 15px; padding: 15px; border-radius: 18px; margin-bottom: 18px; border: 1px solid #e8d4cb; background: #fff5f0; width: 100%; display: block;"></textarea>
+                <button class="button-primary" type="submit">Analyze Text</button>
+            </form>
+        </div>
+
+        <div class="page-links">
+            <a class="button-secondary" href="/dashboard">Open Dashboard</a>
+            <a class="button-secondary" href="/history">View History</a>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loader">
+        <div class="spinner-box">
+            <div class="spinner-ring"></div>
+            <div class="spinner-pulse"></div>
+        </div>
+        <div class="loading-text" id="loader-title">Analyzing Prescription</div>
+        <div class="loading-subtext" id="loader-subtext">Uploading files to the system...</div>
+    </div>
+
+    <script>
+        const forms = document.querySelectorAll('form');
+        const loader = document.getElementById('loader');
+        const titleEl = document.getElementById('loader-title');
+        const subtextEl = document.getElementById('loader-subtext');
+
+        const steps = [
+            { title: "Uploading Content", sub: "Sending prescription data to local Flask server..." },
+            { title: "OCR Image Scan", sub: "Processing pixel grid via local EasyOCR engine..." },
+            { title: "NLP Word Parsing", sub: "Isolating clinical entities with spaCy models..." },
+            { title: "Regex Normalization", sub: "Standardizing dosage units, strengths, and frequency..." },
+            { title: "XAMPP Database Sync", sub: "Saving structured records to MariaDB database..." }
+        ];
+
+        forms.forEach(form => {
+            form.addEventListener('submit', function() {
+                loader.classList.add('active');
+                let stepIdx = 0;
+                
+                // Rotate status steps every 1.5 seconds to reflect active processing
+                const interval = setInterval(() => {
+                    if (stepIdx < steps.length - 1) {
+                        stepIdx++;
+                        titleEl.innerText = steps[stepIdx].title;
+                        subtextEl.innerText = steps[stepIdx].sub;
+                    }
+                }, 1500);
+            });
+        });
+    </script>
+</body>
+</html>

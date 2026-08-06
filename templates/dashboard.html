@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MediExtractAI Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <div class="logo-brand">
+            <span class="logo-mark">M</span>
+            MediExtractAI
+        </div>
+
+        <div class="top-nav">
+            <a class="nav-link" href="/">Upload</a>
+            <a class="nav-link" href="/dashboard">Dashboard</a>
+            <a class="nav-link" href="/history">History</a>
+        </div>
+
+        <div class="page-header">
+            <div>
+                <h1>Dashboard</h1>
+                <p class="page-description">Monitor prescription extraction performance and access recent records in a clean review workspace.</p>
+            </div>
+        </div>
+
+        <div class="stats-grid">
+            <div class="card">
+                <h3>Total Prescriptions</h3>
+                <p class="value">{{ total }}</p>
+            </div>
+
+            <div class="card">
+                <h3>Average Accuracy</h3>
+                <p class="value">{{ average_accuracy }}%</p>
+            </div>
+            <div class="card">
+                <h3>Review Records</h3>
+                <p class="value">{{ recent|length }}</p>
+            </div>
+        </div>
+
+        <h2 class="section-title">Recent Records</h2>
+        <div class="record-grid">
+            {% if recent %}
+                {% for item in recent %}
+                <div class="record-item">
+                    <strong>{{ item.filename }}</strong>
+                    <p>Medicine: {{ item.medicine or 'N/A' }}</p>
+                    <p>Accuracy: <strong>{{ item.accuracy }}%</strong></p>
+                    <div class="record-actions">
+                        <a href="/review/{{ item.id }}">Review</a>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="no-results">No recent prescriptions found. Upload one to begin extraction and tracking.</div>
+            {% endif %}
+        </div>
+
+        <div class="page-links">
+            <a class="button-secondary" href="/">Upload New Prescription</a>
+            <a class="button-secondary" href="/history">View Full History</a>
+        </div>
+    </div>
+</body>
+</html>

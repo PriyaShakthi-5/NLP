@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MediExtractAI Result</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <div class="logo-brand">
+            <span class="logo-mark">M</span>
+            MediExtractAI
+        </div>
+
+        <div class="top-nav">
+            <a class="nav-link" href="/">Upload</a>
+            <a class="nav-link" href="/dashboard">Dashboard</a>
+            <a class="nav-link" href="/history">History</a>
+        </div>
+
+        <div class="page-header">
+            <div>
+                <h1>Extraction Complete</h1>
+                <p class="page-description">Your prescription image was processed successfully. Verify the OCR output and the extracted prescription fields before moving to review.</p>
+            </div>
+        </div>
+
+        <div class="summary-panel">
+            <div class="summary-item">
+                <span class="summary-label">File</span>
+                <span class="summary-value">{{ filename }}</span>
+            </div>
+
+            <div class="summary-item">
+                <span class="summary-label">Accuracy</span>
+                <span class="summary-value">{{ accuracy }}%</span>
+            </div>
+            <div class="summary-item">
+                <span class="summary-label">Correct Fields</span>
+                <span class="summary-value">{{ 5 - wrong_fields }}</span>
+            </div>
+        </div>
+
+        <div class="result-grid">
+            <div class="result-card">
+                <h2>OCR Output</h2>
+                <div class="text-card">
+                    <pre>{{ extracted_text }}</pre>
+                </div>
+            </div>
+
+            <div class="result-card">
+                <h2>Extracted Fields</h2>
+                <div class="result-list">
+                    {% for label, value in [
+                        ('Medicine', extracted_fields.medicine),
+                        ('Strength', extracted_fields.strength),
+                        ('Dosage', extracted_fields.dosage),
+                        ('Frequency', extracted_fields.frequency),
+                        ('Duration', extracted_fields.duration)
+                    ] %}
+                    <div class="result-row">
+                        <span class="field-label">{{ label }}</span>
+                        <span class="field-value">{{ value or '—' }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <div class="page-links">
+            <a class="button-primary" href="/review/{{ record_id }}">Review Record</a>
+            <a class="button-secondary" href="/">Upload Another</a>
+            <a class="button-secondary" href="/dashboard">Open Dashboard</a>
+        </div>
+    </div>
+</body>
+</html>

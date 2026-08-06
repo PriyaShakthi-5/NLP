@@ -1,0 +1,23 @@
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# Compiled Python files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Local uploads
+uploads/*
+!uploads/.gitkeep
+
+# Database & local secrets
+*.db
+*.log
+sqlite.db
+
+# OS generated files
+.DS_Store
+Thumbs.db
