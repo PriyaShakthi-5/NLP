@@ -198,6 +198,30 @@ def _normalize_strength(value):
     return _normalize_unit(value, r'(\d+)\s*(mg|ml|mcg|g)', 'upper')
 
 
+def _is_address_or_metadata_sentence(sentence):
+    lowered = sentence.lower()
+    
+    # If it contains medicine indicators, it is not an address/metadata line
+    if any(k in lowered for k in ['mg', 'ml', 'mcg', 'tablet', 'capsule', 'tabs', 'drug', 'medicine', 'medication']):
+        return False
+        
+    # Address and clinic metadata keywords
+    address_keywords = [
+        'road', 'street', 'avenue', 'lane', 'nagar', 'cross', 'main', 'floor', 
+        'building', 'block', 'sector', 'phase', 'city', 'town', 'state', 'country',
+        'hospital', 'clinic', 'ph:', 'phone', 'tel:', 'email', 'date:', 'patient', 
+        'doctor', 'dr.', 'signature', 'sign:', 'age:', 'sex:', 'gender:', 'years', 'yrs'
+    ]
+    if any(k in lowered for k in address_keywords):
+        return True
+        
+    # Zip code / phone number patterns (5-6 digits)
+    if re.search(r'\b\d{5,6}\b', lowered):
+        return True
+        
+    return False
+
+
 def _extract_medicine(sentence, sent_doc):
     """
     Tries 4 strategies to extract the medicine name:
@@ -206,6 +230,8 @@ def _extract_medicine(sentence, sent_doc):
     3. spaCy Noun Chunks
     4. First few words of the sentence
     """
+    if _is_address_or_metadata_sentence(sentence):
+        return ''
     patterns = [
         (r'\b(?:medicine|medication|drug|tablet|tablets|capsule|capsules|syrup)\b\s*(?:is|:|-)?\s*((?:(?!\b(?:dosage|dose|frequency|duration|strength|patient|is|for|daily)\b)[A-Za-z0-9/\- ])+)', 1),
         (r'(^|\s)([A-Za-z][A-Za-z0-9./-]*(?:\s+[A-Za-z][A-Za-z0-9./-]*){0,3})\b(?:\s+\d+)?\s*(?:mg|ml|mcg|g)\b', 2),
