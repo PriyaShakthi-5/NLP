@@ -626,16 +626,11 @@
             }
         }
 
-        function initSampleDataIfEmpty() {
-            const records = getStoredRecords();
-            if (records.length === 0) {
-                const initial = [
-                    { id: '1', filename: 'helen_green.jpg', medicine: 'Cetirizine', dosage: '1 Tab', strength: '10 MG', frequency: 'ONCE DAILY', duration: '10 Days', ocr_text: SAMPLES[2], accuracy: 100, date: '2026-08-06' },
-                    { id: '2', filename: 'sophia_loren.jpg', medicine: 'Metformin', dosage: '1 Tablet', strength: '850 MG', frequency: 'TWICE DAILY', duration: '60 Days', ocr_text: SAMPLES[3], accuracy: 100, date: '2026-08-06' },
-                    { id: '3', filename: 'david_miller.jpg', medicine: 'Amoxicillin', dosage: '500 MG', strength: '500 MG', frequency: 'THREE TIMES A DAY', duration: '7 Days', ocr_text: SAMPLES[4], accuracy: 100, date: '2026-08-06' }
-                ];
-                saveRecords(initial);
-            }
+        function initStorage() {
+            let records = getStoredRecords();
+            // Automatically clean out any pre-seeded sample records (id 1, 2, 3)
+            records = records.filter(r => r.id !== '1' && r.id !== '2' && r.id !== '3');
+            saveRecords(records);
         }
 
         /* --- UI CONTROLLERS --- */
@@ -970,9 +965,9 @@
             downloadAnchor.remove();
         }
 
-        // Initialize on load
+        // Initialize on load with clean empty storage
         window.addEventListener('DOMContentLoaded', () => {
-            initSampleDataIfEmpty();
+            initStorage();
             renderDashboard();
         });
     </script>
