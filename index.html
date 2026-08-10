@@ -1,34 +1,980 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="refresh" content="0; url=https://c3eaf91063a0ee.lhr.life">
-    <title>Redirecting to MediExtractAI...</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MediExtractAI - Prescription OCR & NLP Platform</title>
+    <link rel="stylesheet" href="./static/style.css">
+    <!-- Client-side OCR engine for static GitHub Pages hosting -->
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
     <style>
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background: #420f1b;
-            color: #fed9c8;
+        .tab-content { display: none; }
+        .tab-content.active { display: block; animation: fadeIn 0.3s ease-in-out; }
+        .nav-link.active {
+            background: linear-gradient(135deg, #9b2d42, #fbbea0);
+            color: #fff;
+            box-shadow: 0 10px 24px rgba(118, 52, 64, 0.25);
+        }
+        .sample-chips {
             display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin: 16px 0 24px;
+        }
+        .chip {
+            padding: 8px 16px;
+            border-radius: 999px;
+            background: rgba(255, 235, 225, 0.9);
+            border: 1px solid rgba(220, 150, 140, 0.4);
+            color: #5a1220;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .chip:hover {
+            background: #fed9c8;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(90, 18, 32, 0.15);
+        }
+        .drag-drop-area {
+            border: 2px dashed rgba(123, 32, 56, 0.35);
+            border-radius: 20px;
+            padding: 32px 20px;
+            text-align: center;
+            background: rgba(255, 255, 255, 0.5);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-bottom: 18px;
+        }
+        .drag-drop-area:hover, .drag-drop-area.dragover {
+            border-color: #9b2d42;
+            background: rgba(254, 217, 200, 0.4);
+        }
+        .btn-danger {
+            background: #9b2d42;
+            color: #fff;
+            padding: 8px 16px;
+            border-radius: 999px;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+        .btn-danger:hover { background: #5a1220; }
+        .action-row {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(42, 15, 27, 0.85);
+            backdrop-filter: blur(8px);
+            display: none;
             align-items: center;
             justify-content: center;
-            height: 100vh;
-            margin: 0;
-            text-align: center;
+            z-index: 10000;
         }
-        a {
-            color: #fbbea0;
-            text-decoration: underline;
+        .modal.active { display: flex; }
+        .modal-content {
+            background: #fff5f0;
+            border-radius: 28px;
+            padding: 32px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 25px 60px rgba(0,0,0,0.3);
+            border: 1px solid rgba(255, 215, 190, 0.6);
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
         }
     </style>
-    <script type="text/javascript">
-        window.location.href = "https://c3eaf91063a0ee.lhr.life";
-    </script>
 </head>
 <body>
-    <div>
-        <h1>Redirecting to Live Application</h1>
-        <p>Connecting to the MediExtractAI server... If you are not redirected in a few seconds, <a href="https://c3eaf91063a0ee.lhr.life">click here to open the application</a>.</p>
+    <div class="container">
+        <!-- Logo & Brand Header -->
+        <div class="logo-brand">
+            <span class="logo-mark">M</span>
+            MediExtractAI
+        </div>
+
+        <!-- Navigation Bar -->
+        <div class="top-nav">
+            <a class="nav-link active" href="javascript:void(0)" onclick="switchTab('upload')">Upload & Extract</a>
+            <a class="nav-link" href="javascript:void(0)" onclick="switchTab('dashboard')">Dashboard</a>
+            <a class="nav-link" href="javascript:void(0)" onclick="switchTab('history')">History</a>
+        </div>
+
+        <!-- TAB 1: UPLOAD & EXTRACT -->
+        <div id="tab-upload" class="tab-content active">
+            <div class="page-header">
+                <div>
+                    <h1>MediExtractAI Prescription Scanner</h1>
+                    <p class="page-description">Upload handwritten or printed prescription images, or paste raw clinical notes. Our localized NLP engine instantly extracts medicine, dosage, strength, frequency, and duration.</p>
+                </div>
+            </div>
+
+            <div class="hero">
+                <div>
+                    <h1>Modern Prescription Extraction for Healthcare Teams</h1>
+                    <p>Powered by high-precision medical entity rules, address & demographic blocklists, and automated measurement normalization.</p>
+                </div>
+                <div class="hero-actions">
+                    <a class="button-primary" href="#upload-section">Scan Prescription</a>
+                    <a class="button-secondary" href="javascript:void(0)" onclick="switchTab('dashboard')">View Analytics</a>
+                </div>
+            </div>
+
+            <div class="workflow">
+                <div class="workflow-step upload">1. Input</div>
+                <div class="workflow-step process">2. OCR</div>
+                <div class="workflow-step process">3. NLP Parse</div>
+                <div class="workflow-step review">4. Review</div>
+                <div class="workflow-step complete">5. Saved</div>
+            </div>
+
+            <!-- Quick Preset Samples -->
+            <h2 class="section-title">Quick Test Prescriptions</h2>
+            <p style="color: var(--muted); margin-top: -12px;">Click any preset sample below to load and run instantaneous extraction:</p>
+            <div class="sample-chips">
+                <div class="chip" onclick="loadSample(1)">💊 Sample 1: Paracetamol 500mg</div>
+                <div class="chip" onclick="loadSample(2)">🌿 Sample 2: Helen Green (Cetirizine 10mg)</div>
+                <div class="chip" onclick="loadSample(3)">🩺 Sample 3: Sophia Loren (Metformin 850mg)</div>
+                <div class="chip" onclick="loadSample(4)">🦷 Sample 4: David Miller (Amoxicillin 500mg)</div>
+            </div>
+
+            <!-- Image Upload Form -->
+            <div class="form-box" id="upload-section">
+                <label for="image-file"><strong>Upload Prescription Image</strong> (Supports OCR scanning in browser)</label>
+                <div class="drag-drop-area" id="drop-zone" onclick="document.getElementById('image-file').click()">
+                    <p style="margin: 0; font-size: 1.1rem; color: #5a1220; font-weight: 700;">📁 Click to browse or drag & drop prescription image</p>
+                    <p style="margin: 6px 0 0; font-size: 0.85rem; color: var(--muted);" id="file-chosen-text">Supports JPG, PNG, WEBP</p>
+                </div>
+                <input type="file" id="image-file" accept="image/*" style="display: none;" onchange="handleFileSelect(event)">
+                <button class="button-primary" type="button" id="btn-scan-img" onclick="processImageFile()" style="width: 100%;">Upload & Scan Image</button>
+            </div>
+
+            <!-- Direct Text Extraction Form -->
+            <div class="form-box" style="margin-top: 24px;">
+                <label for="prescription-text"><strong>Or Paste / Type Prescription Text Directly (NLP Analysis)</strong></label>
+                <textarea id="prescription-text" rows="7" placeholder="Type or paste prescription text here... e.g.&#10;Rx&#10;Patient: Helen Green&#10;Cetirizine 10mg&#10;Dosage: 1 tab&#10;Frequency: once daily&#10;Duration: 10 days&#10;Dr. Carter" style="resize: vertical; min-height: 140px; font-family: inherit; font-size: 15px; padding: 15px; border-radius: 18px; margin-bottom: 18px; border: 1px solid #e8d4cb; background: #fff5f0; width: 100%; display: block;"></textarea>
+                <button class="button-primary" type="button" onclick="processRawText()" style="width: 100%;">Analyze Text with NLP</button>
+            </div>
+
+            <!-- Results View Panel (Dynamically shown after extraction) -->
+            <div id="results-panel" style="display: none; margin-top: 36px;">
+                <div class="page-header">
+                    <div>
+                        <h2>Extraction Results</h2>
+                        <p class="page-description">Extracted clinical entities and normalized measurement units.</p>
+                    </div>
+                </div>
+
+                <div class="summary-panel">
+                    <div class="summary-item">
+                        <span class="summary-label">Source</span>
+                        <span class="summary-value" id="res-source">Text Input</span>
+                    </div>
+                    <div class="summary-item">
+                        <span class="summary-label">Calculated Accuracy</span>
+                        <span class="summary-value" id="res-accuracy">100%</span>
+                    </div>
+                    <div class="summary-item">
+                        <span class="summary-label">Extracted Fields</span>
+                        <span class="summary-value" id="res-field-count">5 / 5</span>
+                    </div>
+                </div>
+
+                <div class="result-grid">
+                    <div class="result-card">
+                        <h2>OCR / Raw Input</h2>
+                        <div class="text-card">
+                            <pre id="res-raw-text" style="white-space: pre-wrap; font-family: inherit; font-size: 14px; margin: 0;"></pre>
+                        </div>
+                    </div>
+
+                    <div class="result-card">
+                        <h2>Structured Fields</h2>
+                        <div class="result-list">
+                            <div class="result-row">
+                                <span class="field-label">Medicine</span>
+                                <span class="field-value" id="res-med" style="font-weight: 700; color: #5a1220;">—</span>
+                            </div>
+                            <div class="result-row">
+                                <span class="field-label">Strength</span>
+                                <span class="field-value" id="res-strength">—</span>
+                            </div>
+                            <div class="result-row">
+                                <span class="field-label">Dosage</span>
+                                <span class="field-value" id="res-dosage">—</span>
+                            </div>
+                            <div class="result-row">
+                                <span class="field-label">Frequency</span>
+                                <span class="field-value" id="res-freq">—</span>
+                            </div>
+                            <div class="result-row">
+                                <span class="field-label">Duration</span>
+                                <span class="field-value" id="res-dur">—</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="page-links" style="margin-top: 24px;">
+                    <button class="button-primary" type="button" onclick="openReviewModalCurrent()">Edit / Review Record</button>
+                    <button class="button-secondary" type="button" onclick="exportCurrentJSON()">Export JSON</button>
+                    <button class="button-secondary" type="button" onclick="switchTab('dashboard')">Go to Dashboard</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 2: DASHBOARD -->
+        <div id="tab-dashboard" class="tab-content">
+            <div class="page-header">
+                <div>
+                    <h1>Extraction Dashboard</h1>
+                    <p class="page-description">Real-time statistics on prescription extractions, accuracy rate, and medical record activity.</p>
+                </div>
+            </div>
+
+            <div class="stats-grid">
+                <div class="card">
+                    <h3>Total Prescriptions</h3>
+                    <p class="value" id="dash-total">0</p>
+                </div>
+                <div class="card">
+                    <h3>Average Accuracy</h3>
+                    <p class="value" id="dash-accuracy">100%</p>
+                </div>
+                <div class="card">
+                    <h3>Unique Medicines</h3>
+                    <p class="value" id="dash-unique">0</p>
+                </div>
+            </div>
+
+            <h2 class="section-title" style="margin-top: 36px;">Recent Prescription Records</h2>
+            <div class="record-grid" id="dash-records-grid">
+                <!-- Dynamically populated by JavaScript -->
+            </div>
+
+            <div class="page-links" style="margin-top: 30px;">
+                <button class="button-secondary" onclick="switchTab('upload')">Scan New Prescription</button>
+                <button class="button-secondary" onclick="switchTab('history')">View Full History</button>
+            </div>
+        </div>
+
+        <!-- TAB 3: HISTORY -->
+        <div id="tab-history" class="tab-content">
+            <div class="page-header">
+                <div>
+                    <h1>Prescription History</h1>
+                    <p class="page-description">Search, review, export, or manage all saved prescription records stored in your browser database.</p>
+                </div>
+            </div>
+
+            <div class="form-box">
+                <label for="history-search">Search Records</label>
+                <input type="search" id="history-search" placeholder="Search by medicine, patient name, or prescription text..." oninput="renderHistoryTable()">
+            </div>
+
+            <div style="display: flex; justify-content: flex-end; margin: 16px 0; gap: 12px;">
+                <button class="button-secondary" onclick="exportAllHistoryJSON()">Export All (JSON)</button>
+                <button class="btn-danger" onclick="clearAllHistory()">Delete All History</button>
+            </div>
+
+            <div class="record-grid" id="history-records-grid">
+                <!-- Dynamically populated by JavaScript -->
+            </div>
+
+            <div class="page-links" style="margin-top: 30px;">
+                <button class="button-secondary" onclick="switchTab('upload')">Back to Upload</button>
+                <button class="button-secondary" onclick="switchTab('dashboard')">Open Dashboard</button>
+            </div>
+        </div>
     </div>
+
+    <!-- Edit/Review Modal -->
+    <div class="modal" id="review-modal">
+        <div class="modal-content">
+            <h2 style="color: #5a1220; margin-top: 0;">Edit Prescription Record</h2>
+            <p style="color: var(--muted); font-size: 0.95rem;">Correct any OCR or NLP fields before saving the verified record.</p>
+            <form id="review-form" onsubmit="saveReviewedRecord(event)">
+                <input type="hidden" id="edit-id">
+                <div class="form-group" style="margin-bottom: 14px;">
+                    <label style="display: block; font-weight: 700; margin-bottom: 4px; color: #5a1220;">Medicine Name</label>
+                    <input type="text" id="edit-med" required style="width: 100%; padding: 10px; border-radius: 12px; border: 1px solid #e8d4cb; font-family: inherit; font-size: 15px;">
+                </div>
+                <div class="form-group" style="margin-bottom: 14px;">
+                    <label style="display: block; font-weight: 700; margin-bottom: 4px; color: #5a1220;">Strength</label>
+                    <input type="text" id="edit-strength" style="width: 100%; padding: 10px; border-radius: 12px; border: 1px solid #e8d4cb; font-family: inherit; font-size: 15px;">
+                </div>
+                <div class="form-group" style="margin-bottom: 14px;">
+                    <label style="display: block; font-weight: 700; margin-bottom: 4px; color: #5a1220;">Dosage</label>
+                    <input type="text" id="edit-dosage" style="width: 100%; padding: 10px; border-radius: 12px; border: 1px solid #e8d4cb; font-family: inherit; font-size: 15px;">
+                </div>
+                <div class="form-group" style="margin-bottom: 14px;">
+                    <label style="display: block; font-weight: 700; margin-bottom: 4px; color: #5a1220;">Frequency</label>
+                    <input type="text" id="edit-freq" style="width: 100%; padding: 10px; border-radius: 12px; border: 1px solid #e8d4cb; font-family: inherit; font-size: 15px;">
+                </div>
+                <div class="form-group" style="margin-bottom: 20px;">
+                    <label style="display: block; font-weight: 700; margin-bottom: 4px; color: #5a1220;">Duration</label>
+                    <input type="text" id="edit-dur" style="width: 100%; padding: 10px; border-radius: 12px; border: 1px solid #e8d4cb; font-family: inherit; font-size: 15px;">
+                </div>
+                <div style="display: flex; gap: 12px; justify-content: flex-end;">
+                    <button type="button" class="button-secondary" onclick="closeReviewModal()">Cancel</button>
+                    <button type="submit" class="button-primary">Save Changes</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Diagnostic Progress Loading Overlay -->
+    <div class="loading-overlay" id="loader">
+        <div class="spinner-box">
+            <div class="spinner-ring"></div>
+            <div class="spinner-pulse"></div>
+        </div>
+        <div class="loading-text" id="loader-title">Analyzing Prescription</div>
+        <div class="loading-subtext" id="loader-subtext">Executing clinical NLP pipeline...</div>
+    </div>
+
+    <!-- CLIENT-SIDE NLP EXTRACTION ENGINE -->
+    <script>
+        /* --- CONSTANTS & VOCABULARIES --- */
+        const FIELD_LABELS = {
+            medicine: ['medicine', 'medication', 'drug', 'tablet', 'capsule', 'syrup'],
+            dosage: ['dosage', 'dose', 'quantity', 'qty', 'take'],
+            strength: ['strength', 'concentration', 'dose'],
+            frequency: ['frequency', 'freq', 'schedule', 'daily', 'bd', 'tid', 'qid', 'od', 'prn'],
+            duration: ['duration', 'for', 'days', 'weeks', 'months']
+        };
+
+        const GENERIC_WORDS = new Set([
+            'medicine', 'medication', 'drug', 'tablet', 'tablets', 'capsule', 'capsules', 'syrup',
+            'take', 'takes', 'prescribe', 'prescription', 'use', 'administer', 'patient', 'doctor'
+        ]);
+
+        const INVALID_MEDICINE_TOKENS = new Set([
+            'for', 'bd', 'tid', 'qid', 'od', 'prn', 'day', 'days', 'week', 'weeks', 'month', 'months',
+            'mg', 'ml', 'mcg', 'g', 'tab', 'tabs', 'tablet', 'tablets', 'capsule', 'capsules'
+        ]);
+
+        const INVALID_KEYWORDS = new Set([
+            'clinic', 'hospital', 'medical', 'note', 'patient', 'doctor', 'dr',
+            'name', 'date', 'age', 'sex', 'gender', 'mbbs', 'md', 'dch', 'dnb', 'reg',
+            'care', 'health', 'university', 'college', 'science', 'education',
+            'contact', 'phone', 'email', 'experience', 'internship', 'project',
+            'skills', 'summary', 'achievements', 'hsc', 'sslc',
+            'female', 'male', 'transgender', 'other', 'years', 'yrs', 'yo', 'year',
+            'weight', 'height', 'bp', 'blood', 'pressure', 'temp', 'temperature', 'pulse', 'heart', 'rate',
+            'signature', 'sign', 'history', 'symptoms', 'diagnosis',
+            'road', 'street', 'avenue', 'lane', 'nagar', 'cross', 'main', 'floor',
+            'building', 'block', 'sector', 'phase', 'city', 'town', 'state', 'country',
+            'seattle', 'atlanta', 'chennai', 'bangalore', 'mumbai', 'delhi', 'india', 'district', 'zone',
+            'west', 'east', 'north', 'south', 'no', 'number', 'address', 'near',
+            'opp', 'opposite', 'behind',
+            'frequency', 'dosage', 'duration', 'strength', 'rx', 'prescription',
+            'quantity', 'qty'
+        ]);
+
+        const FREQUENCY_MAP = {
+            'bd': 'TWICE DAILY',
+            'tid': 'THREE TIMES A DAY',
+            'qid': 'FOUR TIMES A DAY',
+            'od': 'ONCE DAILY',
+            'prn': 'AS NEEDED',
+            'once daily': 'ONCE DAILY',
+            'twice daily': 'TWICE DAILY',
+            'three times a day': 'THREE TIMES A DAY',
+            'four times a day': 'FOUR TIMES A DAY',
+            'every 12 hours': 'TWICE DAILY',
+            'every 8 hours': 'THREE TIMES A DAY',
+            'every 6 hours': 'FOUR TIMES A DAY'
+        };
+
+        const UNIT_MAP = {
+            'tab': 'Tab', 'tabs': 'Tabs', 'tablet': 'Tablet', 'tablets': 'Tablets',
+            'capsule': 'Capsule', 'capsules': 'Capsules',
+            'ml': 'ML', 'mg': 'MG', 'mcg': 'MCG', 'g': 'G'
+        };
+
+        /* --- NLP HELPER FUNCTIONS --- */
+        function cleanText(val) {
+            return (val || '').replace(/\s+/g, ' ').trim();
+        }
+
+        function isAddressOrMetadataSentence(sentence) {
+            const lowered = sentence.toLowerCase();
+            if (['mg', 'ml', 'mcg', 'tablet', 'capsule', 'tabs', 'drug', 'medicine', 'medication'].some(k => lowered.includes(k))) {
+                return false;
+            }
+            const addressKeywords = [
+                'road', 'street', 'avenue', 'lane', 'nagar', 'cross', 'main', 'floor',
+                'building', 'block', 'sector', 'phase', 'city', 'town', 'state', 'country',
+                'hospital', 'clinic', 'ph:', 'phone', 'tel:', 'email', 'date:', 'patient',
+                'doctor', 'dr.', 'signature', 'sign:', 'age:', 'sex:', 'gender:', 'years', 'yrs'
+            ];
+            if (addressKeywords.some(k => lowered.includes(k))) return true;
+            if (/\b\d{5,6}\b/.test(lowered)) return true;
+            return false;
+        }
+
+        function isValidMedicine(candidate) {
+            const cleaned = cleanText(candidate).toLowerCase();
+            if (!cleaned || cleaned.length < 3 || GENERIC_WORDS.has(cleaned)) return false;
+            
+            const firstChar = cleaned.match(/[a-z0-9]/);
+            if (firstChar && !/^[a-z]$/.test(firstChar[0])) return false;
+
+            const tokens = cleaned.replace(/-/g, ' ').split(/\s+/);
+            if (tokens.some(t => INVALID_MEDICINE_TOKENS.has(t))) return false;
+            if (tokens.some(t => INVALID_KEYWORDS.has(t))) return false;
+
+            return /[a-z]/i.test(cleaned);
+        }
+
+        function normalizeFrequency(val) {
+            const normalized = cleanText(val).toLowerCase();
+            if (FREQUENCY_MAP[normalized]) return FREQUENCY_MAP[normalized];
+
+            const matchDay = normalized.match(/\b(\d+)\s*x\s*(?:a\s*)?(?:day|daily)\b/);
+            if (matchDay) {
+                const amt = parseInt(matchDay[1], 10);
+                if (amt === 1) return 'ONCE DAILY';
+                if (amt === 2) return 'TWICE DAILY';
+                if (amt === 3) return 'THREE TIMES A DAY';
+                if (amt >= 4) return 'FOUR TIMES A DAY';
+            }
+            return cleanText(val).toUpperCase();
+        }
+
+        function normalizeDuration(val) {
+            const m = (val || '').match(/(\d+)\s*(day|days|week|weeks|month|months)/i);
+            if (m) {
+                const qty = m[1];
+                let unit = m[2].toLowerCase();
+                if (['day', 'week', 'month'].includes(unit)) unit += 's';
+                return `${qty} ${unit.charAt(0).toUpperCase() + unit.slice(1)}`;
+            }
+            return cleanText(val).replace(/\b\w/g, l => l.toUpperCase());
+        }
+
+        function normalizeUnit(val, regex, formatType) {
+            const m = (val || '').match(regex);
+            if (m) {
+                const qty = m[1];
+                const unit = m[2].toLowerCase();
+                const mapped = UNIT_MAP[unit] || unit.toUpperCase();
+                return `${qty} ${mapped}`;
+            }
+            return formatType === 'title' ? cleanText(val).replace(/\b\w/g, l => l.toUpperCase()) : cleanText(val).toUpperCase();
+        }
+
+        function normalizeDosage(val) {
+            return normalizeUnit(val, /(\d+)\s*(capsules?|tablets?|tabs?)/i, 'title');
+        }
+
+        function normalizeStrength(val) {
+            return normalizeUnit(val, /(\d+)\s*(mg|ml|mcg|g)/i, 'upper');
+        }
+
+        function extractMedicine(sentence) {
+            if (isAddressOrMetadataSentence(sentence)) return '';
+
+            const patterns = [
+                /\b(?:medicine|medication|drug|tablet|tablets|capsule|capsules|syrup)\b\s*(?:is|:|-)?\s*([A-Za-z0-9/\- ]+)/i,
+                /(?:^|\s)([A-Za-z][A-Za-z0-9./-]*(?:\s+[A-Za-z][A-Za-z0-9./-]*){0,3})\b(?:\s+\d+)?\s*(?:mg|ml|mcg|g)\b/i
+            ];
+
+            for (const pat of patterns) {
+                const m = sentence.match(pat);
+                if (m) {
+                    const cand = cleanText(m[1]);
+                    if (isValidMedicine(cand)) return cand.replace(/\b\w/g, l => l.toUpperCase());
+                }
+            }
+
+            const firstMatch = sentence.match(/^\W*([A-Za-z][A-Za-z0-9./-]*(?:\s+[A-Za-z][A-Za-z0-9./-]*){0,3})\b/);
+            if (firstMatch) {
+                const cand = cleanText(firstMatch[1]);
+                const tokens = cand.split(/\s+/);
+                if (tokens.length <= 3 && isValidMedicine(cand)) {
+                    if (!tokens.some(t => ['bd', 'tid', 'qid', 'prn', 'for', 'od'].includes(t.toLowerCase()))) {
+                        return cand.replace(/\b\w/g, l => l.toUpperCase());
+                    }
+                }
+            }
+            return '';
+        }
+
+        function extractFromContext(sentence, fieldName) {
+            const cleaned = cleanText(sentence);
+            if (fieldName === 'medicine') return extractMedicine(cleaned);
+
+            if (fieldName === 'dosage') {
+                const m1 = cleaned.match(/(\d+)\s*(capsules?|tablets?|tabs?)/i);
+                if (m1) return normalizeDosage(m1[0]);
+                const m2 = cleaned.match(/(\d+)\s*(mg|ml|mcg|g)/i);
+                if (m2) return normalizeStrength(m2[0]);
+                const m3 = cleaned.match(/\b([0-9]+(?:\s*[\-/][\s*]?[0-9]+)?)\b/);
+                if (m3 && parseFloat(m3[1]) <= 20) return m3[1];
+            }
+
+            if (fieldName === 'strength') {
+                const m = cleaned.match(/(\d+)\s*(mg|ml|mcg|g)/i);
+                if (m) return normalizeStrength(m[0]);
+            }
+
+            if (fieldName === 'frequency') {
+                const m = cleaned.match(/\b(once\s*daily|twice\s*daily|three\s*times\s*a\s*day|four\s*times\s*a\s*day|every\s*\d+\s*hours|\d+\s*x\s*(?:a\s*)?day|\d+\s*x\s*daily|bd|tid|qid|od|prn)\b/i);
+                if (m) return normalizeFrequency(m[1]);
+            }
+
+            if (fieldName === 'duration') {
+                const m = cleaned.match(/\b(\d+\s*(day|days|week|weeks|month|months))\b/i);
+                if (m) return normalizeDuration(m[1]);
+            }
+            return '';
+        }
+
+        function extractPrescriptionFields(text) {
+            if (!text) return { medicine: '', dosage: '', strength: '', frequency: '', duration: '' };
+
+            const cleanedText = cleanText(text);
+            const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+            const fields = { medicine: '', dosage: '', strength: '', frequency: '', duration: '' };
+
+            for (const key of Object.keys(fields)) {
+                // Step 1: full text check (except medicine)
+                if (key !== 'medicine') {
+                    const v = extractFromContext(cleanedText, key);
+                    if (v) { fields[key] = v; continue; }
+                }
+
+                // Step 2: Line by line keyword matching
+                let found = '';
+                for (const line of lines) {
+                    const labels = FIELD_LABELS[key] || [];
+                    if (labels.some(l => line.toLowerCase().includes(l)) || (key === 'duration' && line.toLowerCase().includes('for'))) {
+                        found = extractFromContext(line, key);
+                        if (found) break;
+                    }
+                }
+                if (found) { fields[key] = found; continue; }
+
+                // Step 3: Search all lines
+                for (const line of lines) {
+                    found = extractFromContext(line, key);
+                    if (found) break;
+                }
+                if (found) { fields[key] = found; continue; }
+
+                // Step 4: Global regex fallback
+                if (key === 'strength') {
+                    const m = cleanedText.match(/\b(\d+\s*(mg|ml|mcg|g))\b/i);
+                    if (m) fields[key] = normalizeStrength(m[1]);
+                }
+                if (key === 'frequency') {
+                    const m = cleanedText.match(/\b(once\s*daily|twice\s*daily|three\s*times\s*a\s*day|four\s*times\s*a\s*day|every\s*\d+\s*hours|\d+\s*x\s*(?:a\s*)?day|\d+\s*x\s*daily|bd|tid|qid|od|prn)\b/i);
+                    if (m) fields[key] = normalizeFrequency(m[1]);
+                }
+                if (key === 'duration') {
+                    const m = cleanedText.match(/\b(\d+\s*(day|days|week|weeks|month|months))\b/i);
+                    if (m) fields[key] = normalizeDuration(m[1]);
+                }
+            }
+
+            return fields;
+        }
+
+        /* --- SAMPLES DATA --- */
+        const SAMPLES = {
+            1: `Sample Prescription\nPatient: John Doe\nMedicine: Paracetamol\nDosage: 1 tablet\nStrength: 500 mg\nFrequency: 2x daily\nDuration: 5 days`,
+            2: `Rx\nPatient: Helen Green\nCetirizine 10mg\nDosage: 1 tab\nFrequency: once daily\nDuration: 10 days\nDr. Carter`,
+            3: `General Wellness Hospital\n500 Health Parkway, Atlanta, GA 30301\nPh: 404-555-0165\nPatient Name: Sophia Loren\nDate: 03/08/2026\nAge _\nSex:\n72\nFemale\nRx\nMedicine:\nMetformin 850 mg\nDosage:\n1 tablet\nFrequency:\ntwice daily\nDuration:\n60 days\nDr. Alice Vance, MD\nSignature:`,
+            4: `Metro Dental Care\n456 Oak Avenue, Seattle, WA 98101\nPh: 206-555-0143\nPatient Name:\nDavid Miller\nDate: 03/08/2026\nAge _\nSex:\n42\nMale\nRx\nMedicine:\nAmoxicillin 500 mg\nDosage:\ncapsule\nFrequency:\nthree times a day\nDuration:\n7 days`
+        };
+
+        function loadSample(num) {
+            const textarea = document.getElementById('prescription-text');
+            textarea.value = SAMPLES[num];
+            processRawText();
+        }
+
+        /* --- STORAGE & DATABASE SYSTEM --- */
+        let currentRecord = null;
+
+        function getStoredRecords() {
+            try {
+                const data = localStorage.getItem('mediextract_records');
+                return data ? JSON.parse(data) : [];
+            } catch (e) {
+                return [];
+            }
+        }
+
+        function saveRecords(records) {
+            try {
+                localStorage.setItem('mediextract_records', JSON.stringify(records));
+            } catch (e) {
+                console.error("Storage error:", e);
+            }
+        }
+
+        function initSampleDataIfEmpty() {
+            const records = getStoredRecords();
+            if (records.length === 0) {
+                const initial = [
+                    { id: '1', filename: 'helen_green.jpg', medicine: 'Cetirizine', dosage: '1 Tab', strength: '10 MG', frequency: 'ONCE DAILY', duration: '10 Days', ocr_text: SAMPLES[2], accuracy: 100, date: '2026-08-06' },
+                    { id: '2', filename: 'sophia_loren.jpg', medicine: 'Metformin', dosage: '1 Tablet', strength: '850 MG', frequency: 'TWICE DAILY', duration: '60 Days', ocr_text: SAMPLES[3], accuracy: 100, date: '2026-08-06' },
+                    { id: '3', filename: 'david_miller.jpg', medicine: 'Amoxicillin', dosage: '500 MG', strength: '500 MG', frequency: 'THREE TIMES A DAY', duration: '7 Days', ocr_text: SAMPLES[4], accuracy: 100, date: '2026-08-06' }
+                ];
+                saveRecords(initial);
+            }
+        }
+
+        /* --- UI CONTROLLERS --- */
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.nav-link').forEach(el => el.classList.remove('active'));
+
+            const targetTab = document.getElementById(`tab-${tabId}`);
+            if (targetTab) targetTab.classList.add('active');
+
+            const navLinks = document.querySelectorAll('.top-nav .nav-link');
+            if (tabId === 'upload' && navLinks[0]) navLinks[0].classList.add('active');
+            if (tabId === 'dashboard' && navLinks[1]) { navLinks[1].classList.add('active'); renderDashboard(); }
+            if (tabId === 'history' && navLinks[2]) { navLinks[2].classList.add('active'); renderHistoryTable(); }
+
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function calculateAccuracy(fields) {
+            let count = 0;
+            if (fields.medicine) count++;
+            if (fields.strength) count++;
+            if (fields.dosage) count++;
+            if (fields.frequency) count++;
+            if (fields.duration) count++;
+            return Math.round((count / 5) * 100);
+        }
+
+        function displayResults(rawText, fields, sourceName) {
+            const accuracy = calculateAccuracy(fields);
+            const populatedCount = Object.values(fields).filter(Boolean).length;
+
+            document.getElementById('res-source').innerText = sourceName || 'Direct Text';
+            document.getElementById('res-accuracy').innerText = `${accuracy}%`;
+            document.getElementById('res-field-count').innerText = `${populatedCount} / 5`;
+            document.getElementById('res-raw-text').innerText = rawText;
+
+            document.getElementById('res-med').innerText = fields.medicine || '—';
+            document.getElementById('res-strength').innerText = fields.strength || '—';
+            document.getElementById('res-dosage').innerText = fields.dosage || '—';
+            document.getElementById('res-freq').innerText = fields.frequency || '—';
+            document.getElementById('res-dur').innerText = fields.duration || '—';
+
+            const record = {
+                id: Date.now().toString(),
+                filename: sourceName || 'text_input.txt',
+                ocr_text: rawText,
+                medicine: fields.medicine,
+                strength: fields.strength,
+                dosage: fields.dosage,
+                frequency: fields.frequency,
+                duration: fields.duration,
+                accuracy: accuracy,
+                date: new Date().toISOString().split('T')[0]
+            };
+            currentRecord = record;
+
+            // Save to persistent localStorage
+            const records = getStoredRecords();
+            records.unshift(record);
+            saveRecords(records);
+
+            document.getElementById('results-panel').style.display = 'block';
+            document.getElementById('results-panel').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function showLoader(steps, callback) {
+            const loader = document.getElementById('loader');
+            const titleEl = document.getElementById('loader-title');
+            const subtextEl = document.getElementById('loader-subtext');
+
+            loader.classList.add('active');
+            let idx = 0;
+            titleEl.innerText = steps[0].title;
+            subtextEl.innerText = steps[0].sub;
+
+            const interval = setInterval(() => {
+                idx++;
+                if (idx < steps.length) {
+                    titleEl.innerText = steps[idx].title;
+                    subtextEl.innerText = steps[idx].sub;
+                } else {
+                    clearInterval(interval);
+                    loader.classList.remove('active');
+                    if (callback) callback();
+                }
+            }, 600);
+        }
+
+        function processRawText() {
+            const text = document.getElementById('prescription-text').value.trim();
+            if (!text) {
+                alert('Please enter or paste prescription text first.');
+                return;
+            }
+
+            const steps = [
+                { title: 'Reading Text', sub: 'Isolating sentence breaks and clinical tokens...' },
+                { title: 'NLP Word Parsing', sub: 'Applying regex rules and screening address headers...' },
+                { title: 'Normalizing Fields', sub: 'Standardizing dosages, frequencies, and strengths...' }
+            ];
+
+            showLoader(steps, () => {
+                const fields = extractPrescriptionFields(text);
+                displayResults(text, fields, 'Text Entry');
+            });
+        }
+
+        let selectedFile = null;
+        function handleFileSelect(evt) {
+            const file = evt.target.files[0];
+            if (file) {
+                selectedFile = file;
+                document.getElementById('file-chosen-text').innerText = `Selected: ${file.name} (${(file.size/1024).toFixed(1)} KB)`;
+            }
+        }
+
+        // Drag and drop support
+        const dropZone = document.getElementById('drop-zone');
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropZone.addEventListener(eventName, (e) => { e.preventDefault(); dropZone.classList.add('dragover'); }, false);
+        });
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropZone.addEventListener(eventName, (e) => { e.preventDefault(); dropZone.classList.remove('dragover'); }, false);
+        });
+        dropZone.addEventListener('drop', (e) => {
+            const dt = e.dataTransfer;
+            const file = dt.files[0];
+            if (file) {
+                selectedFile = file;
+                document.getElementById('file-chosen-text').innerText = `Selected: ${file.name} (${(file.size/1024).toFixed(1)} KB)`;
+            }
+        });
+
+        function processImageFile() {
+            if (!selectedFile) {
+                alert('Please select or drop an image file first.');
+                return;
+            }
+
+            const loader = document.getElementById('loader');
+            const titleEl = document.getElementById('loader-title');
+            const subtextEl = document.getElementById('loader-subtext');
+
+            loader.classList.add('active');
+            titleEl.innerText = 'Initializing OCR Engine';
+            subtextEl.innerText = 'Loading in-browser Tesseract neural net...';
+
+            if (typeof Tesseract !== 'undefined') {
+                Tesseract.recognize(selectedFile, 'eng', {
+                    logger: m => {
+                        if (m.status === 'recognizing text') {
+                            titleEl.innerText = 'Scanning Image Pixels';
+                            subtextEl.innerText = `OCR Progress: ${Math.round(m.progress * 100)}%`;
+                        }
+                    }
+                }).then(({ data: { text } }) => {
+                    titleEl.innerText = 'Executing Clinical NLP';
+                    subtextEl.innerText = 'Extracting medicine and dosage rules...';
+                    setTimeout(() => {
+                        loader.classList.remove('active');
+                        const fields = extractPrescriptionFields(text);
+                        displayResults(text, fields, selectedFile.name);
+                    }, 400);
+                }).catch(err => {
+                    loader.classList.remove('active');
+                    alert('OCR scan failed: ' + err.message);
+                });
+            } else {
+                loader.classList.remove('active');
+                alert('Tesseract OCR library is not available. Please paste text directly.');
+            }
+        }
+
+        /* --- DASHBOARD VIEW --- */
+        function renderDashboard() {
+            const records = getStoredRecords();
+            document.getElementById('dash-total').innerText = records.length;
+
+            if (records.length === 0) {
+                document.getElementById('dash-accuracy').innerText = '0%';
+                document.getElementById('dash-unique').innerText = '0';
+                document.getElementById('dash-records-grid').innerHTML = '<div class="no-results">No prescriptions recorded yet. Scan one to view metrics.</div>';
+                return;
+            }
+
+            const avgAcc = Math.round(records.reduce((acc, r) => acc + (r.accuracy || 0), 0) / records.length);
+            document.getElementById('dash-accuracy').innerText = `${avgAcc}%`;
+
+            const uniqueMeds = new Set(records.map(r => r.medicine).filter(Boolean)).size;
+            document.getElementById('dash-unique').innerText = uniqueMeds;
+
+            const recent = records.slice(0, 6);
+            document.getElementById('dash-records-grid').innerHTML = recent.map(r => `
+                <div class="record-item">
+                    <strong>${r.filename || 'Prescription Record'}</strong>
+                    <p>Medicine: <strong>${r.medicine || 'N/A'}</strong></p>
+                    <p>Dosage / Strength: ${r.dosage || r.strength || 'N/A'}</p>
+                    <p>Accuracy: <strong>${r.accuracy}%</strong></p>
+                    <div class="action-row">
+                        <button class="button-secondary" onclick="openReviewModal('${r.id}')" style="padding: 6px 12px; font-size: 0.85rem;">Review</button>
+                        <button class="btn-danger" onclick="deleteRecord('${r.id}')" style="padding: 6px 12px; font-size: 0.85rem;">Delete</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        /* --- HISTORY VIEW --- */
+        function renderHistoryTable() {
+            const query = (document.getElementById('history-search')?.value || '').toLowerCase().trim();
+            let records = getStoredRecords();
+
+            if (query) {
+                records = records.filter(r => 
+                    (r.medicine || '').toLowerCase().includes(query) ||
+                    (r.filename || '').toLowerCase().includes(query) ||
+                    (r.ocr_text || '').toLowerCase().includes(query)
+                );
+            }
+
+            const grid = document.getElementById('history-records-grid');
+            if (records.length === 0) {
+                grid.innerHTML = '<div class="no-results">No matching records found in history.</div>';
+                return;
+            }
+
+            grid.innerHTML = records.map(r => `
+                <div class="record-item">
+                    <div style="display: flex; justify-content: space-between; align-items: baseline;">
+                        <strong>${r.filename || 'Prescription Record'}</strong>
+                        <span style="font-size: 0.8rem; color: var(--muted);">${r.date || ''}</span>
+                    </div>
+                    <p style="margin: 6px 0;">Medicine: <strong style="color: #5a1220;">${r.medicine || 'N/A'}</strong></p>
+                    <p style="margin: 4px 0; font-size: 0.9rem;">Strength: ${r.strength || '—'} | Dosage: ${r.dosage || '—'}</p>
+                    <p style="margin: 4px 0; font-size: 0.9rem;">Frequency: ${r.frequency || '—'} | Duration: ${r.duration || '—'}</p>
+                    <p style="margin: 4px 0;">Accuracy: <strong>${r.accuracy}%</strong></p>
+                    <div class="action-row">
+                        <button class="button-secondary" onclick="openReviewModal('${r.id}')" style="padding: 6px 12px; font-size: 0.85rem;">Edit / Review</button>
+                        <button class="btn-danger" onclick="deleteRecord('${r.id}')" style="padding: 6px 12px; font-size: 0.85rem;">Delete</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function deleteRecord(id) {
+            if (confirm('Are you sure you want to delete this record?')) {
+                let records = getStoredRecords();
+                records = records.filter(r => r.id !== id);
+                saveRecords(records);
+                renderDashboard();
+                renderHistoryTable();
+            }
+        }
+
+        function clearAllHistory() {
+            if (confirm('Are you sure you want to delete all prescription history? This action cannot be undone.')) {
+                saveRecords([]);
+                renderDashboard();
+                renderHistoryTable();
+            }
+        }
+
+        /* --- REVIEW & MODAL MANAGEMENT --- */
+        function openReviewModal(id) {
+            const records = getStoredRecords();
+            const record = records.find(r => r.id === id);
+            if (!record) return;
+
+            document.getElementById('edit-id').value = record.id;
+            document.getElementById('edit-med').value = record.medicine || '';
+            document.getElementById('edit-strength').value = record.strength || '';
+            document.getElementById('edit-dosage').value = record.dosage || '';
+            document.getElementById('edit-freq').value = record.frequency || '';
+            document.getElementById('edit-dur').value = record.duration || '';
+
+            document.getElementById('review-modal').classList.add('active');
+        }
+
+        function openReviewModalCurrent() {
+            if (currentRecord) openReviewModal(currentRecord.id);
+        }
+
+        function closeReviewModal() {
+            document.getElementById('review-modal').classList.remove('active');
+        }
+
+        function saveReviewedRecord(e) {
+            e.preventDefault();
+            const id = document.getElementById('edit-id').value;
+            const records = getStoredRecords();
+            const idx = records.findIndex(r => r.id === id);
+
+            if (idx !== -1) {
+                records[idx].medicine = document.getElementById('edit-med').value.trim();
+                records[idx].strength = document.getElementById('edit-strength').value.trim();
+                records[idx].dosage = document.getElementById('edit-dosage').value.trim();
+                records[idx].frequency = document.getElementById('edit-freq').value.trim();
+                records[idx].duration = document.getElementById('edit-dur').value.trim();
+                records[idx].accuracy = calculateAccuracy(records[idx]);
+
+                saveRecords(records);
+                closeReviewModal();
+
+                if (currentRecord && currentRecord.id === id) {
+                    currentRecord = records[idx];
+                    displayResults(currentRecord.ocr_text, currentRecord, currentRecord.filename);
+                }
+
+                renderDashboard();
+                renderHistoryTable();
+            }
+        }
+
+        /* --- EXPORT FUNCTIONS --- */
+        function exportCurrentJSON() {
+            if (!currentRecord) return;
+            downloadJSON(currentRecord, `prescription_${currentRecord.id}.json`);
+        }
+
+        function exportAllHistoryJSON() {
+            const records = getStoredRecords();
+            downloadJSON(records, `mediextract_history_${new Date().toISOString().split('T')[0]}.json`);
+        }
+
+        function downloadJSON(obj, filename) {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(obj, null, 2));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", filename);
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+        }
+
+        // Initialize on load
+        window.addEventListener('DOMContentLoaded', () => {
+            initSampleDataIfEmpty();
+            renderDashboard();
+        });
+    </script>
 </body>
 </html>
