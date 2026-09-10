@@ -54,6 +54,7 @@
                 <h2>Extracted Fields</h2>
                 <div class="result-list">
                     {% for label, value in [
+                        ('Patient Name', extracted_fields.patient_name),
                         ('Medicine', extracted_fields.medicine),
                         ('Strength', extracted_fields.strength),
                         ('Dosage', extracted_fields.dosage),

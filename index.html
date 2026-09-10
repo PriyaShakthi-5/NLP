@@ -192,6 +192,10 @@
                         <h2>Structured Fields</h2>
                         <div class="result-list">
                             <div class="result-row">
+                                <span class="field-label">Patient Name</span>
+                                <span class="field-value" id="res-patient-name" style="font-weight: 700; color: #5a1220;">—</span>
+                            </div>
+                            <div class="result-row">
                                 <span class="field-label">Medicine</span>
                                 <span class="field-value" id="res-med" style="font-weight: 700; color: #5a1220;">—</span>
                             </div>
@@ -296,6 +300,10 @@
             <form id="review-form" onsubmit="saveReviewedRecord(event)">
                 <input type="hidden" id="edit-id">
                 <div class="form-group" style="margin-bottom: 14px;">
+                    <label style="display: block; font-weight: 700; margin-bottom: 4px; color: #5a1220;">Patient Name</label>
+                    <input type="text" id="edit-patient-name" style="width: 100%; padding: 10px; border-radius: 12px; border: 1px solid #e8d4cb; font-family: inherit; font-size: 15px;">
+                </div>
+                <div class="form-group" style="margin-bottom: 14px;">
                     <label style="display: block; font-weight: 700; margin-bottom: 4px; color: #5a1220;">Medicine Name</label>
                     <input type="text" id="edit-med" required style="width: 100%; padding: 10px; border-radius: 12px; border: 1px solid #e8d4cb; font-family: inherit; font-size: 15px;">
                 </div>
@@ -337,6 +345,7 @@
     <script>
         /* --- CONSTANTS & VOCABULARIES --- */
         const FIELD_LABELS = {
+            patient_name: ['patient name', 'patient', 'pt name', 'pt. name', 'name'],
             medicine: ['medicine', 'medication', 'drug', 'tablet', 'capsule', 'syrup'],
             dosage: ['dosage', 'dose', 'quantity', 'qty', 'take'],
             strength: ['strength', 'concentration', 'dose'],
@@ -414,7 +423,7 @@
             return false;
         }
 
-        function isValidMedicine(candidate) {
+        function isValidMedicine(candidate, extraBlockedTokens) {
             const cleaned = cleanText(candidate).toLowerCase();
             if (!cleaned || cleaned.length < 3 || GENERIC_WORDS.has(cleaned)) return false;
             
@@ -423,7 +432,12 @@
 
             const tokens = cleaned.replace(/-/g, ' ').split(/\s+/);
             if (tokens.some(t => INVALID_MEDICINE_TOKENS.has(t))) return false;
-            if (tokens.some(t => INVALID_KEYWORDS.has(t))) return false;
+            
+            const blocked = new Set(INVALID_KEYWORDS);
+            if (extraBlockedTokens) {
+                extraBlockedTokens.forEach(t => blocked.add(t));
+            }
+            if (tokens.some(t => blocked.has(t))) return false;
 
             return /[a-z]/i.test(cleaned);
         }
@@ -473,7 +487,33 @@
             return normalizeUnit(val, /(\d+)\s*(mg|ml|mcg|g)/i, 'upper');
         }
 
-        function extractMedicine(sentence) {
+        function extractPatientName(text) {
+            const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i];
+                const match = line.match(/\b(?:patient\s*(?:name)?|pt\.?\s*name|patient\'s\s*name|name)\s*[:|-]\s*([A-Za-z\s.]+)/i);
+                if (match) {
+                    const cand = cleanText(match[1]);
+                    if (cand && cand.split(/\s+/).length <= 4 && !['mg', 'ml', 'tablet', 'capsule', 'tabs', '500', '850', '10', 'amoxicillin', 'cetirizine', 'metformin', 'paracetamol'].some(u => cand.toLowerCase().includes(u))) {
+                        return cand.replace(/\b\w/g, l => l.toUpperCase());
+                    }
+                }
+                if (/^\s*(?:patient\s*(?:name)?|pt\.?\s*name|name)\s*[:|-]?\s*$/i.test(line)) {
+                    if (i + 1 < lines.length) {
+                        const nextLine = lines[i + 1].trim();
+                        if (/^[A-Za-z\s.]{2,35}$/.test(nextLine) && !isAddressOrMetadataSentence(nextLine)) {
+                            const cand = cleanText(nextLine);
+                            if (!['mg', 'ml', 'tablet', 'capsule', 'tabs', '500', '850', '10', 'date', 'sex', 'age', 'male', 'female', 'amoxicillin', 'cetirizine', 'metformin', 'paracetamol'].some(u => cand.toLowerCase().includes(u))) {
+                                return cand.replace(/\b\w/g, l => l.toUpperCase());
+                            }
+                        }
+                    }
+                }
+            }
+            return '';
+        }
+
+        function extractMedicine(sentence, blockedTokens) {
             if (isAddressOrMetadataSentence(sentence)) return '';
 
             const patterns = [
@@ -485,7 +525,7 @@
                 const m = sentence.match(pat);
                 if (m) {
                     const cand = cleanText(m[1]);
-                    if (isValidMedicine(cand)) return cand.replace(/\b\w/g, l => l.toUpperCase());
+                    if (isValidMedicine(cand, blockedTokens)) return cand.replace(/\b\w/g, l => l.toUpperCase());
                 }
             }
 
@@ -493,7 +533,7 @@
             if (firstMatch) {
                 const cand = cleanText(firstMatch[1]);
                 const tokens = cand.split(/\s+/);
-                if (tokens.length <= 3 && isValidMedicine(cand)) {
+                if (tokens.length <= 3 && isValidMedicine(cand, blockedTokens)) {
                     if (!tokens.some(t => ['bd', 'tid', 'qid', 'prn', 'for', 'od'].includes(t.toLowerCase()))) {
                         return cand.replace(/\b\w/g, l => l.toUpperCase());
                     }
@@ -502,9 +542,13 @@
             return '';
         }
 
-        function extractFromContext(sentence, fieldName) {
+        function extractFromContext(sentence, fieldName, patientName) {
             const cleaned = cleanText(sentence);
-            if (fieldName === 'medicine') return extractMedicine(cleaned);
+            if (fieldName === 'patient_name') return extractPatientName(cleaned);
+            if (fieldName === 'medicine') {
+                const blocked = patientName ? new Set(patientName.toLowerCase().split(/\s+/)) : null;
+                return extractMedicine(cleaned, blocked);
+            }
 
             if (fieldName === 'dosage') {
                 const m1 = cleaned.match(/(\d+)\s*(capsules?|tablets?|tabs?)/i);
@@ -533,16 +577,18 @@
         }
 
         function extractPrescriptionFields(text) {
-            if (!text) return { medicine: '', dosage: '', strength: '', frequency: '', duration: '' };
+            if (!text) return { patient_name: '', medicine: '', dosage: '', strength: '', frequency: '', duration: '' };
 
             const cleanedText = cleanText(text);
             const lines = text.split('\n').map(l => l.trim()).filter(Boolean);
-            const fields = { medicine: '', dosage: '', strength: '', frequency: '', duration: '' };
+            const fields = { patient_name: '', medicine: '', dosage: '', strength: '', frequency: '', duration: '' };
 
-            for (const key of Object.keys(fields)) {
+            fields.patient_name = extractPatientName(text);
+
+            for (const key of ['medicine', 'dosage', 'strength', 'frequency', 'duration']) {
                 // Step 1: full text check (except medicine)
                 if (key !== 'medicine') {
-                    const v = extractFromContext(cleanedText, key);
+                    const v = extractFromContext(cleanedText, key, fields.patient_name);
                     if (v) { fields[key] = v; continue; }
                 }
 
@@ -551,7 +597,7 @@
                 for (const line of lines) {
                     const labels = FIELD_LABELS[key] || [];
                     if (labels.some(l => line.toLowerCase().includes(l)) || (key === 'duration' && line.toLowerCase().includes('for'))) {
-                        found = extractFromContext(line, key);
+                        found = extractFromContext(line, key, fields.patient_name);
                         if (found) break;
                     }
                 }
@@ -559,7 +605,7 @@
 
                 // Step 3: Search all lines
                 for (const line of lines) {
-                    found = extractFromContext(line, key);
+                    found = extractFromContext(line, key, fields.patient_name);
                     if (found) break;
                 }
                 if (found) { fields[key] = found; continue; }
@@ -641,12 +687,13 @@
 
         function calculateAccuracy(fields) {
             let count = 0;
+            if (fields.patient_name) count++;
             if (fields.medicine) count++;
             if (fields.strength) count++;
             if (fields.dosage) count++;
             if (fields.frequency) count++;
             if (fields.duration) count++;
-            return Math.round((count / 5) * 100);
+            return Math.round((count / 6) * 100);
         }
 
         function displayResults(rawText, fields, sourceName) {
@@ -655,9 +702,10 @@
 
             document.getElementById('res-source').innerText = sourceName || 'Direct Text';
             document.getElementById('res-accuracy').innerText = `${accuracy}%`;
-            document.getElementById('res-field-count').innerText = `${populatedCount} / 5`;
+            document.getElementById('res-field-count').innerText = `${populatedCount} / 6`;
             document.getElementById('res-raw-text').innerText = rawText;
 
+            document.getElementById('res-patient-name').innerText = fields.patient_name || '—';
             document.getElementById('res-med').innerText = fields.medicine || '—';
             document.getElementById('res-strength').innerText = fields.strength || '—';
             document.getElementById('res-dosage').innerText = fields.dosage || '—';
@@ -668,6 +716,7 @@
                 id: Date.now().toString(),
                 filename: sourceName || 'text_input.txt',
                 ocr_text: rawText,
+                patient_name: fields.patient_name,
                 medicine: fields.medicine,
                 strength: fields.strength,
                 dosage: fields.dosage,
@@ -817,7 +866,8 @@
             document.getElementById('dash-records-grid').innerHTML = recent.map(r => `
                 <div class="record-item">
                     <strong>${r.filename || 'Prescription Record'}</strong>
-                    <p>Medicine: <strong>${r.medicine || 'N/A'}</strong></p>
+                    <p>Patient: <strong>${r.patient_name || 'N/A'}</strong></p>
+                    <p>Medicine: <strong style="color: #5a1220;">${r.medicine || 'N/A'}</strong></p>
                     <p>Dosage / Strength: ${r.dosage || r.strength || 'N/A'}</p>
                     <p>Accuracy: <strong>${r.accuracy}%</strong></p>
                     <div class="action-row">
@@ -835,6 +885,7 @@
 
             if (query) {
                 records = records.filter(r => 
+                    (r.patient_name || '').toLowerCase().includes(query) ||
                     (r.medicine || '').toLowerCase().includes(query) ||
                     (r.filename || '').toLowerCase().includes(query) ||
                     (r.ocr_text || '').toLowerCase().includes(query)
@@ -853,7 +904,8 @@
                         <strong>${r.filename || 'Prescription Record'}</strong>
                         <span style="font-size: 0.8rem; color: var(--muted);">${r.date || ''}</span>
                     </div>
-                    <p style="margin: 6px 0;">Medicine: <strong style="color: #5a1220;">${r.medicine || 'N/A'}</strong></p>
+                    <p style="margin: 6px 0;">Patient: <strong>${r.patient_name || 'N/A'}</strong></p>
+                    <p style="margin: 4px 0;">Medicine: <strong style="color: #5a1220;">${r.medicine || 'N/A'}</strong></p>
                     <p style="margin: 4px 0; font-size: 0.9rem;">Strength: ${r.strength || '—'} | Dosage: ${r.dosage || '—'}</p>
                     <p style="margin: 4px 0; font-size: 0.9rem;">Frequency: ${r.frequency || '—'} | Duration: ${r.duration || '—'}</p>
                     <p style="margin: 4px 0;">Accuracy: <strong>${r.accuracy}%</strong></p>
@@ -890,6 +942,7 @@
             if (!record) return;
 
             document.getElementById('edit-id').value = record.id;
+            document.getElementById('edit-patient-name').value = record.patient_name || '';
             document.getElementById('edit-med').value = record.medicine || '';
             document.getElementById('edit-strength').value = record.strength || '';
             document.getElementById('edit-dosage').value = record.dosage || '';
@@ -914,6 +967,7 @@
             const idx = records.findIndex(r => r.id === id);
 
             if (idx !== -1) {
+                records[idx].patient_name = document.getElementById('edit-patient-name').value.trim();
                 records[idx].medicine = document.getElementById('edit-med').value.trim();
                 records[idx].strength = document.getElementById('edit-strength').value.trim();
                 records[idx].dosage = document.getElementById('edit-dosage').value.trim();

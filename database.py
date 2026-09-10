@@ -30,11 +30,12 @@ def save_prescription_result(filename, extracted_text, extracted_fields, accurac
     """Saves extraction results directly to XAMPP MySQL database."""
     sql = '''
         INSERT INTO prescriptions (
-            filename, extracted_text, medicine, dosage, frequency, duration, strength, accuracy, reviewed, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            filename, extracted_text, patient_name, medicine, dosage, frequency, duration, strength, accuracy, reviewed, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     '''
     params = (
         filename, extracted_text,
+        extracted_fields.get('patient_name', ''),
         extracted_fields.get('medicine', ''),
         extracted_fields.get('dosage', ''),
         extracted_fields.get('frequency', ''),
@@ -55,11 +56,13 @@ def init_db():
         
         # Create MySQL Table
         with mysql.connector.connect(**DB_CONFIG) as conn:
-            conn.cursor().execute('''
+            cursor = conn.cursor()
+            cursor.execute('''
                 CREATE TABLE IF NOT EXISTS prescriptions (
                     id INT AUTO_INCREMENT PRIMARY KEY,
                     filename VARCHAR(255),
                     extracted_text TEXT,
+                    patient_name VARCHAR(255),
                     medicine VARCHAR(255),
                     dosage VARCHAR(255),
                     frequency VARCHAR(255),
@@ -70,6 +73,11 @@ def init_db():
                     created_at VARCHAR(50)
                 )
             ''')
+            # Auto-migrate column if adding to existing database table
+            try:
+                cursor.execute('ALTER TABLE prescriptions ADD COLUMN patient_name VARCHAR(255) AFTER extracted_text')
+            except MySQLError:
+                pass
     except MySQLError as e:
         print(f"Database initialization error: {e}")
 
@@ -77,8 +85,8 @@ def init_db():
 def list_prescriptions(query='', limit=None):
     """Retrieves list of records from XAMPP MySQL based on query matching."""
     if query:
-        sql = 'SELECT * FROM prescriptions WHERE filename LIKE ? OR medicine LIKE ? OR extracted_text LIKE ? ORDER BY id DESC'
-        params = (f'%{query}%', f'%{query}%', f'%{query}%')
+        sql = 'SELECT * FROM prescriptions WHERE filename LIKE ? OR patient_name LIKE ? OR medicine LIKE ? OR extracted_text LIKE ? ORDER BY id DESC'
+        params = (f'%{query}%', f'%{query}%', f'%{query}%', f'%{query}%')
     else:
         sql, params = 'SELECT * FROM prescriptions ORDER BY id DESC', ()
     rows = _query_db(sql, params, fetch=True)
@@ -92,8 +100,9 @@ def get_prescription(record_id):
 
 def update_prescription(record_id, extracted_fields, accuracy):
     """Updates XAMPP MySQL record values upon human review."""
-    sql = 'UPDATE prescriptions SET medicine = ?, dosage = ?, frequency = ?, duration = ?, strength = ?, accuracy = ?, reviewed = 1 WHERE id = ?'
+    sql = 'UPDATE prescriptions SET patient_name = ?, medicine = ?, dosage = ?, frequency = ?, duration = ?, strength = ?, accuracy = ?, reviewed = 1 WHERE id = ?'
     params = (
+        extracted_fields.get('patient_name', ''),
         extracted_fields.get('medicine', ''),
         extracted_fields.get('dosage', ''),
         extracted_fields.get('frequency', ''),

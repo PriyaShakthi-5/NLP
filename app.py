@@ -38,9 +38,9 @@ def upload():
         extracted_data = extract_text_from_image(file_path)
         fields = extracted_data['fields']
 
-        total_fields = 5
+        total_fields = 6
         wrong_fields = 0
-        for key in ['medicine', 'dosage', 'strength', 'frequency', 'duration']:
+        for key in ['patient_name', 'medicine', 'dosage', 'strength', 'frequency', 'duration']:
             if not fields.get(key, '').strip():
                 wrong_fields += 1
 
@@ -60,6 +60,7 @@ def result(record_id):
         return redirect(url_for('index'))
 
     fields = {
+        'patient_name': record.get('patient_name', ''),
         'medicine': record.get('medicine', ''),
         'dosage': record.get('dosage', ''),
         'strength': record.get('strength', ''),
@@ -72,7 +73,7 @@ def result(record_id):
         filename=record.get('filename', ''),
         extracted_text=record.get('extracted_text', ''),
         extracted_fields=fields,
-        wrong_fields=5 - sum(1 for value in fields.values() if value and value.strip()),
+        wrong_fields=6 - sum(1 for value in fields.values() if value and value.strip()),
         accuracy=record.get('accuracy', 0),
         record_id=record_id,
     )
@@ -86,15 +87,16 @@ def review(record_id):
 
     if request.method == 'POST':
         fields = {
+            'patient_name': request.form.get('patient_name', ''),
             'medicine': request.form.get('medicine', ''),
             'dosage': request.form.get('dosage', ''),
             'strength': request.form.get('strength', ''),
             'frequency': request.form.get('frequency', ''),
             'duration': request.form.get('duration', ''),
         }
-        total_fields = 5
+        total_fields = 6
         wrong_fields = 0
-        for key in ['medicine', 'dosage', 'strength', 'frequency', 'duration']:
+        for key in ['patient_name', 'medicine', 'dosage', 'strength', 'frequency', 'duration']:
             if not fields.get(key, '').strip():
                 wrong_fields += 1
         correct_fields = total_fields - wrong_fields
@@ -134,15 +136,17 @@ def extract_text():
 
     fields = extract_prescription_fields(text)
 
-    total_fields = 5
+    total_fields = 6
     wrong_fields = 0
-    for key in ['medicine', 'dosage', 'strength', 'frequency', 'duration']:
+    for key in ['patient_name', 'medicine', 'dosage', 'strength', 'frequency', 'duration']:
         if not fields.get(key, '').strip():
             wrong_fields += 1
 
     correct_fields = total_fields - wrong_fields
     accuracy = round((correct_fields / total_fields) * 100, 2) if total_fields else 0
     record_id = save_prescription_result('Pasted Text', text, fields, accuracy)
+
+    return redirect(url_for('result', record_id=record_id))
 
     return redirect(url_for('result', record_id=record_id))
 

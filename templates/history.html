@@ -37,6 +37,7 @@
             {% for record in records %}
             <div class="record-item">
                 <strong>{{ record.filename }}</strong>
+                <p>Patient: {{ record.patient_name or 'N/A' }}</p>
                 <p>Medicine: {{ record.medicine or 'N/A' }}</p>
                 <p>Accuracy: <strong>{{ record.accuracy }}%</strong></p>
                 <div class="record-actions">

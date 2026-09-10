@@ -8,6 +8,7 @@ except OSError:
     nlp = None
 
 FIELD_LABELS = {
+    'patient_name': ['patient name', 'patient', 'pt name', 'pt. name', 'name'],
     'medicine': ['medicine', 'medication', 'drug', 'tablet', 'capsule', 'syrup'],
     'dosage': ['dosage', 'dose', 'quantity', 'qty', 'take'],
     'strength': ['strength', 'concentration', 'dose'],
@@ -66,7 +67,6 @@ def _contains_label(sentence, labels):
 def _is_valid_bare_dosage(num_str, context_before, context_after):
     context_lowered = context_before.lower().strip()
     
-    # Common address, phone, registration, or metadata label patterns
     reject_patterns = [
         r'\bno\.?\W*$', r'\breg\.?\W*$', r'\bph\.?\W*$', r'\btel\.?\W*$', 
         r'\bphone\W*$', r'\bdate\W*$', r'\bage\W*$', r'\bsex\W*$', r'\bpin\s*code\W*$'
@@ -74,11 +74,9 @@ def _is_valid_bare_dosage(num_str, context_before, context_after):
     if any(re.search(pat, context_lowered) for pat in reject_patterns):
         return False
         
-    # Check if the number is part of a date
     if re.match(r'^\s*[\-/]\s*\d{2,4}', context_after):
         return False
         
-    # Evaluate numerical value to ensure it's not a large number (like postcode or phone)
     try:
         if '/' in num_str:
             parts = num_str.split('/')
@@ -93,13 +91,12 @@ def _is_valid_bare_dosage(num_str, context_before, context_after):
         return False
 
 
-def _is_valid_medicine(candidate):
+def _is_valid_medicine(candidate, extra_blocked_tokens=None):
     """Filters out clinic names, patient names, generic words, and headers from medicine names."""
     cleaned = candidate.strip().lower()
     if not cleaned or len(cleaned) < 3 or cleaned in GENERIC_WORDS:
         return False
         
-    # Ensure the first alphanumeric character is an alphabetic letter, not a digit
     first_char = re.search(r'[a-z0-9]', cleaned)
     if first_char and not first_char.group(0).isalpha():
         return False
@@ -108,36 +105,31 @@ def _is_valid_medicine(candidate):
     if tokens & INVALID_MEDICINE_TOKENS:
         return False
 
-    # Block resume, clinic, document, metadata, demographics, vitals, and address/location keywords
     invalid_keywords = {
-        # Clinic/hospital/professional terms
         'clinic', 'hospital', 'medical', 'note', 'patient', 'doctor', 'dr', 
         'name', 'date', 'age', 'sex', 'gender', 'mbbs', 'md', 'dch', 'dnb', 'reg',
         'care', 'health', 'university', 'college', 'science', 'education',
         'contact', 'phone', 'email', 'experience', 'internship', 'project',
         'skills', 'summary', 'achievements', 'hsc', 'sslc',
-        # Demographics & Patient details
         'female', 'male', 'transgender', 'other', 'years', 'yrs', 'yo', 'year',
-        # Vitals & clinical indicators
         'weight', 'height', 'bp', 'blood', 'pressure', 'temp', 'temperature', 'pulse', 'heart', 'rate',
-        # Form field labels
         'signature', 'sign', 'history', 'symptoms', 'diagnosis',
-        # Address/location terms
         'road', 'street', 'avenue', 'lane', 'nagar', 'cross', 'main', 'floor', 
         'building', 'block', 'sector', 'phase', 'city', 'town', 'state', 'country', 
-        'chennai', 'bangalore', 'mumbai', 'delhi', 'india', 'district', 'zone', 
+        'seattle', 'atlanta', 'chennai', 'bangalore', 'mumbai', 'delhi', 'india', 'district', 'zone', 
         'west', 'east', 'north', 'south', 'no', 'number', 'address', 'near',
         'opp', 'opposite', 'behind',
-        # Label headers and metadata terms
         'frequency', 'dosage', 'duration', 'strength', 'rx', 'prescription',
         'medicine', 'medication', 'quantity', 'qty', 'tablet', 'tablets',
         'capsule', 'capsules', 'tablet(s)', 'capsule(s)'
     }
+    if extra_blocked_tokens:
+        invalid_keywords.update(extra_blocked_tokens)
+
     if tokens & invalid_keywords:
         return False
 
     if nlp:
-        # Check if the candidate is classified as PERSON
         cand_doc = nlp(candidate)
         for ent in cand_doc.ents:
             if ent.label_ == 'PERSON':
@@ -178,7 +170,6 @@ def _normalize_duration(value):
 
 
 def _normalize_unit(value, pattern, format_type):
-    """Helper to standardize numeric measurements and packaging units."""
     match = re.search(pattern, value, re.IGNORECASE)
     if match:
         qty = match.group(1)
@@ -201,11 +192,9 @@ def _normalize_strength(value):
 def _is_address_or_metadata_sentence(sentence):
     lowered = sentence.lower()
     
-    # If it contains medicine indicators, it is not an address/metadata line
     if any(k in lowered for k in ['mg', 'ml', 'mcg', 'tablet', 'capsule', 'tabs', 'drug', 'medicine', 'medication']):
         return False
         
-    # Address and clinic metadata keywords
     address_keywords = [
         'road', 'street', 'avenue', 'lane', 'nagar', 'cross', 'main', 'floor', 
         'building', 'block', 'sector', 'phase', 'city', 'town', 'state', 'country',
@@ -215,23 +204,44 @@ def _is_address_or_metadata_sentence(sentence):
     if any(k in lowered for k in address_keywords):
         return True
         
-    # Zip code / phone number patterns (5-6 digits)
     if re.search(r'\b\d{5,6}\b', lowered):
         return True
         
     return False
 
 
-def _extract_medicine(sentence, sent_doc):
-    """
-    Tries 4 strategies to extract the medicine name:
-    1. Regex patterns (checking headers like "Medicine:" or units like "500 mg")
-    2. spaCy Entities (checking PRODUCT, ORG, NORP)
-    3. spaCy Noun Chunks
-    4. First few words of the sentence
-    """
+def _extract_patient_name(text):
+    """Extracts patient name from text matching 'Patient Name: ...' or 'Patient: ...' or 'Name: ...'."""
+    lines = [line.strip() for line in text.split('\n') if line.strip()]
+    
+    for i, line in enumerate(lines):
+        match = re.search(r'\b(?:patient\s*(?:name)?|pt\.?\s*name|patient\'s\s*name)\s*[:|-]?\s*([A-Za-z\s.]+)', line, re.IGNORECASE)
+        if match:
+            cand = _clean_text(match.group(1))
+            if cand and len(cand.split()) <= 4 and not any(u in cand.lower() for u in ['mg', 'ml', 'tablet', 'capsule', 'tabs', '500', '850', '10']):
+                return cand.title()
+                
+        if re.search(r'^\s*(?:patient\s*(?:name)?|pt\.?\s*name)\s*[:|-]?\s*$', line, re.IGNORECASE):
+            if i + 1 < len(lines):
+                next_line = lines[i + 1].strip()
+                if re.match(r'^[A-Za-z\s.]{2,35}$', next_line) and not _is_address_or_metadata_sentence(next_line):
+                    return next_line.title()
+
+    for line in lines:
+        match = re.search(r'^\s*name\s*[:|-]\s*([A-Za-z\s.]+)', line, re.IGNORECASE)
+        if match:
+            cand = _clean_text(match.group(1))
+            if cand and len(cand.split()) <= 4 and not any(u in cand.lower() for u in ['mg', 'ml', 'tablet', 'capsule', '500', '850', '10', 'para']):
+                return cand.title()
+                
+    return ''
+
+
+def _extract_medicine(sentence, sent_doc, blocked_tokens=None):
+    """Extracts medicine name while strictly avoiding patient names."""
     if _is_address_or_metadata_sentence(sentence):
         return ''
+        
     patterns = [
         (r'\b(?:medicine|medication|drug|tablet|tablets|capsule|capsules|syrup)\b\s*(?:is|:|-)?\s*((?:(?!\b(?:dosage|dose|frequency|duration|strength|patient|is|for|daily)\b)[A-Za-z0-9/\- ])+)', 1),
         (r'(^|\s)([A-Za-z][A-Za-z0-9./-]*(?:\s+[A-Za-z][A-Za-z0-9./-]*){0,3})\b(?:\s+\d+)?\s*(?:mg|ml|mcg|g)\b', 2),
@@ -240,38 +250,42 @@ def _extract_medicine(sentence, sent_doc):
         match = re.search(pattern, sentence, re.IGNORECASE)
         if match:
             candidate = _clean_text(match.group(group_index))
-            if _is_valid_medicine(candidate):
+            if _is_valid_medicine(candidate, blocked_tokens):
                 return candidate.title()
 
-    for ent in sent_doc.ents:
-        if ent.label_ in {'PRODUCT', 'ORG', 'NORP'}:
-            candidate = _clean_text(ent.text)
-            if _is_valid_medicine(candidate):
-                return candidate.title()
+    if sent_doc:
+        for ent in sent_doc.ents:
+            if ent.label_ in {'PRODUCT', 'ORG', 'NORP'}:
+                candidate = _clean_text(ent.text)
+                if _is_valid_medicine(candidate, blocked_tokens):
+                    return candidate.title()
 
-    for chunk in sent_doc.noun_chunks:
-        candidate = _clean_text(chunk.text)
-        if len(candidate.split()) <= 4 and _is_valid_medicine(candidate):
-            return candidate.title()
+        for chunk in sent_doc.noun_chunks:
+            candidate = _clean_text(chunk.text)
+            if len(candidate.split()) <= 4 and _is_valid_medicine(candidate, blocked_tokens):
+                return candidate.title()
 
     first_match = re.match(r'^\W*([A-Za-z][A-Za-z0-9./-]*(?:\s+[A-Za-z][A-Za-z0-9./-]*){0,3})\b', sentence)
     if first_match:
         candidate = _clean_text(first_match.group(1))
         tokens = candidate.split()
-        if len(tokens) <= 3 and _is_valid_medicine(candidate):
+        if len(tokens) <= 3 and _is_valid_medicine(candidate, blocked_tokens):
             if not any(token.lower() in {'bd', 'tid', 'qid', 'prn', 'for', 'od'} for token in tokens):
                 return candidate.title()
 
     return ''
 
 
-def _extract_from_context(sentence, field_name):
-    """Processes a single sentence context to find and extract a target field."""
+def _extract_from_context(sentence, field_name, patient_name=''):
     cleaned = _clean_text(sentence)
     sent_doc = nlp(cleaned) if nlp else None
 
+    if field_name == 'patient_name':
+        return _extract_patient_name(cleaned)
+
     if field_name == 'medicine':
-        return _extract_medicine(cleaned, sent_doc) if sent_doc else ''
+        blocked = set(patient_name.lower().split()) if patient_name else set()
+        return _extract_medicine(cleaned, sent_doc, blocked)
 
     if field_name == 'dosage':
         m = re.search(r'(\d+)\s*(capsules?|tablets?|tabs?)', cleaned, re.IGNORECASE)
@@ -309,26 +323,20 @@ def _extract_from_context(sentence, field_name):
     return ''
 
 
-def _extract_from_text(text, field_name):
-    """
-    Searches the entire text block for a target field:
-    1. First tries the entire block as a single context (except for medicine, to prevent greedy multiline matches).
-    2. Splits into sentences (preserving newline boundaries) and checks sentences containing field keywords.
-    3. Checks all sentences as a fallback.
-    4. Applies a global regex match fallback.
-    """
+def _extract_from_text(text, field_name, patient_name=''):
     if not text:
         return ''
 
     cleaned_text = _clean_text(text)
 
-    # Step 1: Try full text block first (preserves continuity) - skipped for medicine
+    if field_name == 'patient_name':
+        return _extract_patient_name(text)
+
     if field_name != 'medicine':
-        value = _extract_from_context(cleaned_text, field_name)
+        value = _extract_from_context(cleaned_text, field_name, patient_name)
         if value:
             return value
 
-    # Segment sentences by splitting on newlines and then splitting each line into sentences
     sentences = []
     for line in text.split('\n'):
         line = line.strip()
@@ -340,20 +348,17 @@ def _extract_from_text(text, field_name):
         else:
             sentences.append(line)
 
-    # Step 2: Search sentences containing field labels
     for sentence in sentences:
-        if _contains_label(sentence, FIELD_LABELS[field_name]) or (field_name == 'duration' and 'for' in sentence.lower()):
-            value = _extract_from_context(sentence, field_name)
+        if _contains_label(sentence, FIELD_LABELS.get(field_name, [])) or (field_name == 'duration' and 'for' in sentence.lower()):
+            value = _extract_from_context(sentence, field_name, patient_name)
             if value:
                 return value
 
-    # Step 3: Search all sentences
     for sentence in sentences:
-        value = _extract_from_context(sentence, field_name)
+        value = _extract_from_context(sentence, field_name, patient_name)
         if value:
             return value
 
-    # Step 4: Apply global regex match fallback
     if field_name == 'strength':
         match = re.search(r'\b(\d+\s*(mg|ml|mcg|g))\b', cleaned_text, re.IGNORECASE)
         if match:
@@ -376,8 +381,30 @@ def _extract_from_text(text, field_name):
     return ''
 
 
+def _extract_patient_name(text):
+    """Extracts patient name from text matching 'Patient Name: ...' or 'Patient: ...' or 'Name: ...'."""
+    lines = [line.strip() for line in text.split('\n') if line.strip()]
+    for i, line in enumerate(lines):
+        match = re.search(r'\b(?:patient\s*(?:name)?|pt\.?\s*name|patient\'s\s*name|name)\s*[:|-]\s*([A-Za-z\s.]+)', line, re.IGNORECASE)
+        if match:
+            cand = _clean_text(match.group(1))
+            if cand and len(cand.split()) <= 4 and not any(u in cand.lower() for u in ['mg', 'ml', 'tablet', 'capsule', 'tabs', '500', '850', '10', 'amoxicillin', 'cetirizine', 'metformin', 'paracetamol']):
+                return cand.title()
+                
+        if re.search(r'^\s*(?:patient\s*(?:name)?|pt\.?\s*name|name)\s*[:|-]?\s*$', line, re.IGNORECASE):
+            if i + 1 < len(lines):
+                next_line = lines[i + 1].strip()
+                if re.match(r'^[A-Za-z\s.]{2,35}$', next_line) and not _is_address_or_metadata_sentence(next_line):
+                    cand = _clean_text(next_line)
+                    if not any(u in cand.lower() for u in ['mg', 'ml', 'tablet', 'capsule', 'tabs', '500', '850', '10', 'date', 'sex', 'age', 'male', 'female', 'amoxicillin', 'cetirizine', 'metformin', 'paracetamol']):
+                        return cand.title()
+
+    return ''
+
+
 def extract_prescription_fields(text):
     result = {
+        'patient_name': '',
         'medicine': '',
         'dosage': '',
         'strength': '',
@@ -385,8 +412,10 @@ def extract_prescription_fields(text):
         'duration': ''
     }
 
-    for key in result:
-        result[key] = _extract_from_text(text, key)
+    result['patient_name'] = _extract_patient_name(text)
+
+    for key in ['medicine', 'dosage', 'strength', 'frequency', 'duration']:
+        result[key] = _extract_from_text(text, key, result['patient_name'])
 
     return result
 

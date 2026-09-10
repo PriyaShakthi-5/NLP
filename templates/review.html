@@ -38,6 +38,10 @@
                 <h2>Edit Extracted Fields</h2>
                 <form method="post" class="form-box">
                     <div class="form-group">
+                        <label for="patient_name">Patient Name</label>
+                        <input type="text" name="patient_name" id="patient_name" value="{{ record.patient_name or '' }}">
+                    </div>
+                    <div class="form-group">
                         <label for="medicine">Medicine</label>
                         <input type="text" name="medicine" id="medicine" value="{{ record.medicine or '' }}" required>
                     </div>
